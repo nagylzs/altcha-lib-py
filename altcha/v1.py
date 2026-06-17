@@ -7,7 +7,7 @@ import json
 import secrets
 import time
 import urllib.parse
-from typing import Literal, TypedDict, cast, overload
+from typing import Literal, TypedDict, cast, overload, Tuple
 import datetime
 
 # Define algorithms
@@ -148,6 +148,28 @@ class Payload:
     def to_base64(self) -> str:
         """Convert the Payload to a base64 encoded JSON string."""
         return base64.b64encode(json.dumps(self.to_dict()).encode()).decode()
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            algorithm=data["algorithm"],
+            challenge=data["challenge"],
+            number=data["number"],
+            salt=data["salt"],
+            signature=data["signature"],
+        )
+
+    @classmethod
+    def from_base64(cls, b64str: str):
+        return cls.from_dict(cast(
+            PayloadType, json.loads(base64.b64decode(b64str).decode())
+        ))
+
+    def parse_salt(self) -> Tuple[str, int, dict[str, str]]:
+        """Returns salt into (nonce, expires, params)"""
+        nonce, salt_query = self.salt.split("?", 2)
+        salt_params = dict(urllib.parse.parse_qsl(salt_query))
+        return nonce, int(salt_params["expires"]), salt_params
 
 
 class ServerSignaturePayload:
